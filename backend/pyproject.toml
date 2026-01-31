@@ -1,0 +1,13 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "API for bus data"
+readme = "README.md"
+requires-python = "==3.13.*"
+dependencies = [
+    "apscheduler>=3.11.2",
+    "fastapi[standard]>=0.128.0",
+    "pydantic>=2.12.5",
+    "pytz>=2025.2",
+    "requests>=2.32.5",
+]

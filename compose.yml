@@ -1,17 +1,14 @@
-# filepath: /Users/stephen/Code/BusTimer/compose.yml
-version: "3.8"
-
 services:
   db:
     build:
       context: ./data
       dockerfile: Dockerfile
     environment:
-      POSTGRES_USER: bususer
-      POSTGRES_PASSWORD: buspass
-      POSTGRES_DB: busdb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PW}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT}:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,15 +22,47 @@ services:
   pgadmin:
     image: dpage/pgadmin4:latest
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: pgadmin@stephenhallett.nz
+      PGADMIN_DEFAULT_PASSWORD: pgadmin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
-      - "8080:80"
+      - "${PGADMIN_PORT}:80"
     depends_on:
       - db
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: BusAPI
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PW: ${POSTGRES_PW}
+      POSTGRES_HOST: ${POSTGRES_DB}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      SUBSCRIPTION_KEY: ${SUBSCRIPTION_KEY}
+      SAVE_TIME: ${SAVE_TIME}
+
+    ports:
+      - "${BACKEND_PORT}:8000"
+    restart: always
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c ''import sys,urllib.request; sys.exit(0) if urllib.request.urlopen("http://localhost:8000/health").status==200 else sys.exit(1)''',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
 
 volumes:
   db_data:
