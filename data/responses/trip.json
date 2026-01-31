@@ -1,0 +1,17 @@
+{
+  "data": {
+    "type": "trip",
+    "id": "1286-79821-58200-2-e30bf04a",
+    "attributes": {
+      "bikes_allowed": 0,
+      "block_id": "b_3_821",
+      "direction_id": 0,
+      "route_id": "INN-202",
+      "service_id": "Sunday-1",
+      "shape_id": "1286-79821-67e249b9",
+      "trip_headsign": "Inner Link Anticlockwise",
+      "trip_id": "1286-79821-58200-2-e30bf04a",
+      "wheelchair_accessible": 0
+    }
+  }
+}

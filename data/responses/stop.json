@@ -1,0 +1,15 @@
+{
+  "data": {
+    "type": "stop",
+    "id": "100-56c57897",
+    "attributes": {
+      "location_type": 1,
+      "stop_code": "100",
+      "stop_id": "100-56c57897",
+      "stop_lat": -36.97766,
+      "stop_lon": 174.84925,
+      "stop_name": "Papatoetoe Train Station",
+      "wheelchair_boarding": 0
+    }
+  }
+}

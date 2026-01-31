@@ -1,0 +1,15 @@
+{
+  "data": {
+    "type": "route",
+    "id": "INN-202",
+    "attributes": {
+      "agency_id": "NZB",
+      "route_color": "56AF31",
+      "route_id": "INN-202",
+      "route_long_name": "INN",
+      "route_short_name": "INN",
+      "route_text_color": "152239",
+      "route_type": 3
+    }
+  }
+}

@@ -1,0 +1,44 @@
+# filepath: /Users/stephen/Code/BusTimer/compose.yml
+version: "3.8"
+
+services:
+  db:
+    build:
+      context: ./data
+      dockerfile: Dockerfile
+    environment:
+      POSTGRES_USER: bususer
+      POSTGRES_PASSWORD: buspass
+      POSTGRES_DB: busdb
+    ports:
+      - "5433:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  pgadmin_data:
+
+networks:
+  default:
+    name: bustimer_network

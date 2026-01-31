@@ -1,0 +1,40 @@
+{
+  "status": "OK",
+  "response": {
+    "header": {
+      "timestamp": 1769856143.051,
+      "gtfs_realtime_version": "1.0",
+      "incrementality": 0
+    },
+    "entity": [
+      {
+        "id": "14325",
+        "vehicle": {
+          "trip": {
+            "trip_id": "1286-79831-85500-2-05e7f485",
+            "start_time": "23:45:00",
+            "start_date": "20260131",
+            "schedule_relationship": 0,
+            "route_id": "INN-202",
+            "direction_id": 0
+          },
+          "position": {
+            "latitude": -36.8481652,
+            "longitude": 174.7555439,
+            "bearing": "270",
+            "speed": 0
+          },
+          "timestamp": 1769856117,
+          "vehicle": {
+            "id": "14325",
+            "label": "NB4325",
+            "license_plate": "HGH742"
+          },
+          "occupancy_status": 0
+        },
+        "is_deleted": false
+      }
+    ]
+  },
+  "error": null
+}
