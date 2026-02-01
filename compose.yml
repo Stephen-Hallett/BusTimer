@@ -1,23 +1,23 @@
 services:
   db:
-    build:
-      context: ./data
-      dockerfile: Dockerfile
+    image: postgis/postgis:16-3.4
+    container_name: ${POSTGRES_DB}
     environment:
+      POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PW}
-      POSTGRES_DB: ${POSTGRES_DB}
+      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+      - ./data/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
-      start_period: 10s
-      retries: 5
-    restart: unless-stopped
+      retries: 10
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -66,7 +66,9 @@ services:
 
 volumes:
   db_data:
+    driver: local
   pgadmin_data:
+  volumes:
 
 networks:
   default:
