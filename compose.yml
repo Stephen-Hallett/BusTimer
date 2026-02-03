@@ -12,6 +12,7 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./data/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./data/trips.csv:/docker-entrypoint-initdb.d/trips.csv:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
@@ -30,7 +31,7 @@ services:
     depends_on:
       - db
     volumes:
-      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json
     restart: unless-stopped
 
   backend:
