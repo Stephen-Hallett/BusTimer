@@ -40,6 +40,6 @@ async def lifespan(_: APIRouter) -> AsyncGenerator[None, None]:
 router = APIRouter(lifespan=lifespan)
 
 
-@router.get("/value")
+@router.get("")
 async def value() -> float:
-    return con.get_account_value()
+    return con.get_vehicle_locations()

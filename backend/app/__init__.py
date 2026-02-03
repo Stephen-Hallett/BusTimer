@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
+from .router.trips import router as TripsRouter
 from .router.vehicles import router as VehicleRouter
 from .utils.logger import MyLogger
 
@@ -17,6 +18,7 @@ app.add_middleware(
 logger = MyLogger().get_logger()
 
 app.include_router(VehicleRouter, prefix="/vehicles")
+app.include_router(TripsRouter, prefix="/trips")
 
 
 @app.get("/health")
