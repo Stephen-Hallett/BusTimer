@@ -56,7 +56,7 @@ example_response = {
 """  # NOQA
 
 import os
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor  # NOQA:F401
 from pprint import pprint
 
 import polars as pl
@@ -64,6 +64,7 @@ import requests
 
 trips = pl.read_json("work_trips.json")
 pprint(trips)
+filtered_trips = trips.filter(pl.col.service_id == "Sunday-1")
 
 
 def get_trip(trip_id: str) -> None | dict:
@@ -81,12 +82,15 @@ def get_trip(trip_id: str) -> None | dict:
 if __name__ == "__main__":
     headers = {"Ocp-Apim-Subscription-Key": os.environ["SUBSCRIPTION_KEY"]}
 
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        active_trips = list(
-            executor.map(
-                get_trip, [trip["trip_id"] for trip in trips.iter_rows(named=True)]
-            )
-        )
+    # with ThreadPoolExecutor(max_workers=10) as executor:
+    #     active_trips = list(
+    #         executor.map(
+    #             get_trip,
+    #             [trip["trip_id"] for trip in filtered_trips.iter_rows(named=True)],
+    #         )
+    #     )
 
-pprint([trip for trip in active_trips if trip is not None])
-print(len([trip for trip in active_trips if trip is not None]))
+
+
+# pprint([trip for trip in active_trips if trip is not None])
+# print(len([trip for trip in active_trips if trip is not None]))

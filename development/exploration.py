@@ -73,6 +73,8 @@ relevant_trips.drop("stop_id").unique().write_json(
     "work_trips.json"
 )  # counter clockwise, direction_id = 0
 
+relevant_trips.drop("stop_id", "stops").unique().write_csv("trips.csv")
+
 example_trip = relevant_trips.head(1)
 
 example_stops = example_trip.select("stops").explode("stops").unnest("stops")
