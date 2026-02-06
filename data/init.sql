@@ -30,7 +30,7 @@ FROM
 -- Create table for vehicle locations
 CREATE TABLE
     IF NOT EXISTS vehicle_locations (
-        id INTEGER PRIMARY KEY,
+        id INTEGER NOT NULL,
         trip_id VARCHAR(255) NOT NULL,
         occupancy_status INTEGER NOT NULL,
         bearing DOUBLE PRECISION NOT NULL,
@@ -45,7 +45,8 @@ CREATE TABLE
             direction_id INTEGER NOT NULL,
             created_at TIMESTAMP
         WITH
-            TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id, timestamp)
     );
 
 -- Create indexes for common query patterns
