@@ -23,18 +23,6 @@ class Controller(BaseDatabase):
         self.headers = {"Ocp-Apim-Subscription-Key": os.environ["SUBSCRIPTION_KEY"]}
 
     @log
-    def get_vehicle_location(self, vehicle_id: int) -> float:
-        location = requests.get(
-            f"{self.realtime_api}/vehiclelocations",
-            headers=self.headers,
-            params={"vehicleid": vehicle_id},
-            timeout=5,
-        ).json()
-        if location.get("status") == "OK":
-            return location["response"]["entity"][0]
-        raise ValueError(f"No vehicle found with the ID {vehicle_id}.")
-
-    @log
     def create_vehicle_location(self, vehicle_location: VehicleLocation) -> None:
         with (
             self.get_connection() as conn,
@@ -124,9 +112,11 @@ class Controller(BaseDatabase):
             timeout=15,
         ).json()
 
+        self.logger.info(res)
+
         vehicle_locations = []
         for item in res["response"]["entity"]:
-            if item.get("trip"):
+            if item.get("vehicle", {}).get("trip"):
                 try:
                     vehicle_locations.append(VehicleLocation.model_validate(item))
                 except Exception as e:  # NOQA

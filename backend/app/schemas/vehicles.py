@@ -61,16 +61,15 @@ class VehicleLocation(BaseModel):
     @field_validator("start_time", mode="before")
     @classmethod
     def _build_start_time_from_trip(cls, v) -> datetime:
-        # v will be the dict at vehicle.trip because of AliasPath above
         if isinstance(v, dict):
             sd = v.get("start_date")
             st = v.get("start_time")
             if sd and st:
                 try:
-                    # parse as naive datetime then attach UTC timezone to make it aware
-                    return datetime.strptime(f"{sd} {st}", "%Y%m%d %H:%M:%S").replace(
-                        tzinfo=pytz.timezone("Pacific/Auckland")
-                    )
+                    # Parse as naive datetime in NZ timezone
+                    nz_tz = pytz.timezone("Pacific/Auckland")
+                    naive_dt = datetime.strptime(f"{sd} {st}", "%Y%m%d %H:%M:%S")  # NOQA
+                    return nz_tz.localize(naive_dt)
                 except ValueError as exc:
                     logger.exception(
                         "Failed to parse start_date/start_time into datetime: %s", exc

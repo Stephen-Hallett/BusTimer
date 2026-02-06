@@ -18,6 +18,7 @@ tz = pytz.timezone("Pacific/Auckland")
 
 def save_data() -> None:
     print("Saving vehicle locations")
+    con.save_vehicle_locations()
 
 
 @asynccontextmanager
@@ -38,8 +39,3 @@ async def lifespan(_: APIRouter) -> AsyncGenerator[None, None]:
 
 
 router = APIRouter(lifespan=lifespan)
-
-
-@router.get("")
-async def value() -> float:
-    return con.get_vehicle_locations()
