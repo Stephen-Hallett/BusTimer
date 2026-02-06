@@ -45,7 +45,7 @@ class Controller(BaseDatabase):
         self,
         route_id: str | None = None,
         service_id: str | None = None,
-        direction_id: int | None = None,
+        direction_id: str | None = None,
         shape_id: str | None = None,
         limit: int | None = None,
         offset: int | None = 0,
@@ -54,10 +54,10 @@ class Controller(BaseDatabase):
         Get trips with optional filtering.
 
         Args:
-            route_id: Filter by route ID
-            service_id: Filter by service ID
-            direction_id: Filter by direction ID (0 or 1)
-            shape_id: Filter by shape ID
+            route_id: Filter by route ID (single ID or comma-separated list)
+            service_id: Filter by service ID (single ID or comma-separated list)
+            direction_id: Filter by direction ID (single ID or comma-separated list)
+            shape_id: Filter by shape ID (single ID or comma-separated list)
             limit: Maximum number of results to return
             offset: Number of results to skip (for pagination)
 
@@ -73,20 +73,24 @@ class Controller(BaseDatabase):
             params = []
 
             if route_id is not None:
-                query += " AND route_id = %s"
-                params.append(route_id)
+                route_ids = [rid.strip() for rid in route_id.split(",")]
+                query += " AND route_id = ANY(%s)"
+                params.append(route_ids)
 
             if service_id is not None:
-                query += " AND service_id = %s"
-                params.append(service_id)
+                service_ids = [sid.strip() for sid in service_id.split(",")]
+                query += " AND service_id = ANY(%s)"
+                params.append(service_ids)
 
             if direction_id is not None:
-                query += " AND direction_id = %s"
-                params.append(direction_id)
+                direction_ids = [int(did.strip()) for did in direction_id.split(",")]
+                query += " AND direction_id = ANY(%s)"
+                params.append(direction_ids)
 
             if shape_id is not None:
-                query += " AND shape_id = %s"
-                params.append(shape_id)
+                shape_ids = [shid.strip() for shid in shape_id.split(",")]
+                query += " AND shape_id = ANY(%s)"
+                params.append(shape_ids)
 
             query += " ORDER BY trip_id"
 
