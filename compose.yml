@@ -10,7 +10,7 @@ services:
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - ${DB_DATA_PATH:-./db_data}:/var/lib/postgresql/data:/var/lib/postgresql/data
       - ./data/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - ./data/trips.csv:/docker-entrypoint-initdb.d/trips.csv:ro
     restart: unless-stopped
