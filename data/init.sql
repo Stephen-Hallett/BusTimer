@@ -63,6 +63,10 @@ CREATE INDEX IF NOT EXISTS idx_vehicle_locations_start_time ON vehicle_locations
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 ALTER TABLE vehicle_locations
-ADD COLUMN location GEOGRAPHY (POINT, 4326);
+ADD COLUMN location GEOGRAPHY(POINT, 4326) 
+GENERATED ALWAYS AS (
+    ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography
+) STORED;
 
+-- Create spatial index
 CREATE INDEX IF NOT EXISTS idx_vehicle_locations_location ON vehicle_locations USING GIST (location);

@@ -14,4 +14,7 @@ class BaseDatabase:
         }
 
     def get_connection(self):  # NOQA
-        return psycopg2.connect(**self.connection_params)
+        conn = psycopg2.connect(**self.connection_params)
+        with conn.cursor() as cur:
+            cur.execute("SET timezone = 'Pacific/Auckland';")
+        return conn
