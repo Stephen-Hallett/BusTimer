@@ -1,0 +1,33 @@
+name: Deploy app to vm through Tailscale
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Connect Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:gh-ci
+
+      - name: Redeploy App
+        run: |
+          ssh -o "StrictHostKeyChecking no" ${{ secrets.VPS_USER }}@apps "
+            if [ ! -d /home/stephen/BusTimer/.git ]; then
+                git clone https://github.com/Stephen-Hallett/BusTimer.git /home/stephen/BusTimer;
+            fi \
+            && cd /home/stephen/BusTimer \
+            && git pull \
+            && printf \"%s\" \"${{ secrets.ENV }}\" > .env \
+            && docker compose up -d --build
+          "
