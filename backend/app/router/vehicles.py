@@ -17,14 +17,14 @@ tz = pytz.timezone("Pacific/Auckland")
 
 
 def save_data() -> None:
-    print("Saving vehicle locations")
+    logger.info("Saving vehicle locations")
     con.save_vehicle_locations()
 
 
 @asynccontextmanager
 async def lifespan(_: APIRouter) -> AsyncGenerator[None, None]:
-    scheduler = BackgroundScheduler()
-    minute, hour, day, month, wday = os.environ["SAVE_TIME"].split(" ")
+    scheduler = BackgroundScheduler(timezone=tz)
+    minute, hour, day, month, wday = os.environ["SAVE_TIME"].strip('"').split(" ")
     scheduler.add_job(
         save_data,
         "cron",
@@ -35,7 +35,9 @@ async def lifespan(_: APIRouter) -> AsyncGenerator[None, None]:
         day_of_week=wday,
     )
     scheduler.start()
+    logger.info(f"Scheduler started with cron: {os.environ['SAVE_TIME']} (NZ timezone)")
     yield
+    scheduler.shutdown()  # Clean shutdown on app stop
 
 
 router = APIRouter(lifespan=lifespan)
