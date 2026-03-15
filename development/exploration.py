@@ -2,6 +2,8 @@ from pathlib import Path
 
 import folium
 import polars as pl
+from pprint import pprint
+
 
 data_path = Path("../data/gtfs")
 
@@ -65,7 +67,6 @@ relevant_trips = detailed_trips.filter(
     pl.col.stops.list.eval(pl.element().struct["stop_code"].is_in(journey)).list.sum()
     == len(journey)
 )
-from pprint import pprint
 
 pprint(relevant_trips.drop("stop_id").unique())
 
