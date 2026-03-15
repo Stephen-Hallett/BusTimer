@@ -21,6 +21,7 @@ class Controller(BaseDatabase):
         super().__init__()
         self.logger: logging.Logger = MyLogger().get_logger()
 
+    @log
     def _download_gtfs(self, data_path: str) -> None:
         self.logger.info("Downloading GTFS zip...")
         response = requests.get(GTFS_URL, timeout=60)
@@ -37,6 +38,7 @@ class Controller(BaseDatabase):
                         f"Required GTFS file not found in zip: {filename}"
                     )
 
+    @log
     def _build_dataframes(
         self, data_path: str
     ) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
