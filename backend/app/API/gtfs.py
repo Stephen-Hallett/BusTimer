@@ -42,21 +42,75 @@ class Controller(BaseDatabase):
     def _build_dataframes(
         self, data_path: str
     ) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
-        """Process GTFS files and return (relevant_trips, segments, key_segments)."""
+        """Process GTFS files and return (relevant_trips, segments, key_segments).
+
+        Three-phase approach to avoid peak memory from a full-dataset shapes join:
+          Phase 1 — scan stop_times + stops (no shapes) to find candidate trip_ids
+                     whose stop sets are supersets of at least one journey.
+          Phase 2 — run the full shapes join only for candidate trips (~100x smaller).
+          Phase 3 — reuse Phase 1 data to find all trips traversing key segments
+                     (no shapes needed for this).
+        """
         journeys = [tuple(j) for j in json.loads(os.environ["JOURNEYS"])]
 
         from pathlib import Path
 
         p = Path(data_path)
-        trips_df = pl.read_csv(p / "trips.txt")
-        stop_times = pl.read_csv(p / "stop_times.txt").join(
-            trips_df, how="inner", on="trip_id"
-        )
-        stops = pl.read_csv(p / "stops.txt").join(stop_times, how="inner", on="stop_id")
-        shapes = pl.read_csv(p / "shapes.txt")
 
-        trip_stops = trips_df.join(stops, on="trip_id", how="left").join(
-            shapes,
+        # ------------------------------------------------------------------
+        # Phase 1: lightweight scan — stop_times + stops only, no shapes
+        # ------------------------------------------------------------------
+        stops_minimal = pl.read_csv(
+            p / "stops.txt", columns=["stop_id", "stop_code", "stop_lat", "stop_lon"]
+        )
+
+        # (trip_id, stop_id, stop_sequence, stop_code) for every trip
+        trip_stop_codes = (
+            pl.scan_csv(p / "stop_times.txt")
+            .select(["trip_id", "stop_id", "stop_sequence"])
+            .join(stops_minimal.lazy().select(["stop_id", "stop_code"]), on="stop_id")
+            .collect()
+        )
+
+        # Trips whose stop-code set is a superset of at least one journey
+        journey_stop_sets = [set(j) for j in journeys]
+        trip_stop_groups = trip_stop_codes.group_by("trip_id").agg(pl.col("stop_code"))
+        candidate_trip_ids = [
+            row["trip_id"]
+            for row in trip_stop_groups.iter_rows(named=True)
+            if any(jset.issubset(set(row["stop_code"])) for jset in journey_stop_sets)
+        ]
+        self.logger.info(f"Candidate trips for key journeys: {len(candidate_trip_ids)}")
+
+        # ------------------------------------------------------------------
+        # Phase 2: full join (including shapes) for candidate trips only
+        # ------------------------------------------------------------------
+        trips_df = pl.read_csv(p / "trips.txt")
+        candidate_trips_df = trips_df.filter(
+            pl.col("trip_id").is_in(candidate_trip_ids)
+        )
+        candidate_shape_ids = candidate_trips_df["shape_id"].unique().to_list()
+
+        # Reuse trip_stop_codes — no need to re-read stop_times.txt
+        stop_times_candidate = (
+            trip_stop_codes.filter(pl.col("trip_id").is_in(candidate_trip_ids))
+            .drop("stop_code")  # re-added via stops join below
+            .join(candidate_trips_df, how="inner", on="trip_id")
+        )
+        stops_candidate = stops_minimal.join(
+            stop_times_candidate, how="inner", on="stop_id"
+        )
+
+        shapes_candidate = (
+            pl.scan_csv(p / "shapes.txt")
+            .filter(pl.col("shape_id").is_in(candidate_shape_ids))
+            .collect()
+        )
+
+        trip_stops = candidate_trips_df.join(
+            stops_candidate, on="trip_id", how="left"
+        ).join(
+            shapes_candidate,
             how="inner",
             left_on=["shape_id", "stop_lat", "stop_lon"],
             right_on=["shape_id", "shape_pt_lat", "shape_pt_lon"],
@@ -150,9 +204,11 @@ class Controller(BaseDatabase):
             (key_segments.select("segment_id").unique())["segment_id"]
         )
 
+        # ------------------------------------------------------------------
+        # Phase 3: scan all trips for key segments — no shapes needed
+        # ------------------------------------------------------------------
         segments = (
-            trip_info.lazy()
-            .with_columns(stop_code=pl.col("stop").struct.field("stop_code"))
+            trip_stop_codes.lazy()
             .sort(["trip_id", "stop_sequence"])
             .with_columns(end_stop_code=pl.col("stop_code").shift(-1).over("trip_id"))
             .filter(pl.col.end_stop_code.is_not_null())
@@ -167,8 +223,10 @@ class Controller(BaseDatabase):
             .collect(engine="streaming")
         )
 
-        relevant_trips = detailed_trips.join(
-            segments[["trip_id"]].unique(), on="trip_id", how="inner"
+        relevant_trips = (
+            trips_df[["trip_id", "route_id", "service_id", "direction_id", "shape_id"]]
+            .unique()
+            .filter(pl.col("trip_id").is_in(segments["trip_id"].unique().to_list()))
         )
 
         return relevant_trips, segments, key_segments
