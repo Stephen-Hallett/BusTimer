@@ -4,7 +4,8 @@ import holidays
 import polars as pl
 from psycopg2.extras import RealDictCursor
 from pytz import timezone
-from utils.db import BaseDatabase
+
+from ..utils.db import BaseDatabase
 
 db = BaseDatabase()
 
