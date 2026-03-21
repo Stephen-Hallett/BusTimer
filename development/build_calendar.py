@@ -64,7 +64,7 @@ days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sun
 day = "sunday" if today in nz_holidays else days[today.weekday()]
 
 print(calendar.filter(pl.col(day) == 1)["service_id"].to_list())
-print(list(calendar.iter_rows(named=True)))
+print(list(calendar.iter_rows()))
 
 # def get_service_id() -> None:
 #     """Get the current service-id to find what trips are running.

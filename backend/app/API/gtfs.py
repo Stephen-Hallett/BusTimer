@@ -310,7 +310,7 @@ class Controller(BaseDatabase):
             for row in unique_segments.iter_rows(named=True)
         ]
 
-        calendar_rows = list(calendar.iter_rows(named=True))
+        calendar_rows = list(calendar.iter_rows())
 
         with self.get_connection() as conn, conn.cursor() as cur:
             cur.execute("TRUNCATE trips, trip_segments, segments, calendar")
