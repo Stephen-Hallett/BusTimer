@@ -13,7 +13,14 @@ from ..utils.db import BaseDatabase
 from ..utils.logger import MyLogger, log
 
 GTFS_URL = "https://gtfs.at.govt.nz/gtfs.zip"
-FILES_NEEDED = {"routes.txt", "trips.txt", "stop_times.txt", "stops.txt", "shapes.txt"}
+FILES_NEEDED = {
+    "routes.txt",
+    "trips.txt",
+    "stop_times.txt",
+    "stops.txt",
+    "shapes.txt",
+    "calendar.txt",
+}
 
 
 class Controller(BaseDatabase):
@@ -56,6 +63,20 @@ class Controller(BaseDatabase):
         from pathlib import Path
 
         p = Path(data_path)
+
+        calendar = pl.read_csv(
+            p / "calendar.txt",
+            columns=[
+                "service_id",
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday",
+                "saturday",
+                "sunday",
+            ],
+        )
 
         # ------------------------------------------------------------------
         # Phase 1: lightweight scan — stop_times + stops only, no shapes
@@ -229,14 +250,16 @@ class Controller(BaseDatabase):
             .filter(pl.col("trip_id").is_in(segments["trip_id"].unique().to_list()))
         )
 
-        return relevant_trips, segments, key_segments
+        return relevant_trips, segments, key_segments, calendar
 
     @log
     def refresh_gtfs(self) -> dict[str, int]:
         """Download GTFS data and refresh trips, trip_segments, and segments tables."""
         with tempfile.TemporaryDirectory() as tmp:
             self._download_gtfs(tmp)
-            relevant_trips, trip_segments_df, key_segments = self._build_dataframes(tmp)
+            relevant_trips, trip_segments_df, key_segments, calendar = (
+                self._build_dataframes(tmp)
+            )
 
         self.logger.info(
             f"GTFS processed: {len(relevant_trips)} trips, "
@@ -287,8 +310,10 @@ class Controller(BaseDatabase):
             for row in unique_segments.iter_rows(named=True)
         ]
 
+        calendar_rows = list(calendar.iter_rows(named=True))
+
         with self.get_connection() as conn, conn.cursor() as cur:
-            cur.execute("TRUNCATE trips, trip_segments, segments")
+            cur.execute("TRUNCATE trips, trip_segments, segments, calendar")
 
             execute_values(
                 cur,
@@ -315,6 +340,24 @@ class Controller(BaseDatabase):
                 ) VALUES %s
                 """,
                 segment_rows,
+            )
+
+            execute_values(
+                cur,
+                """
+                INSERT INTO calendar (
+                    service_id,
+                    monday,
+                    tuesday,
+                    wednesday,
+                    thursday,
+                    friday,
+                    saturday,
+                    sunday
+                )
+                VALUES %s
+                """,
+                calendar_rows,
             )
 
             conn.commit()

@@ -81,7 +81,7 @@ class Controller(BaseDatabase):
 
     @log
     def save_vehicle_locations(self) -> int:
-        filtered_trips = trip_con.get_trips(service_id=f"Daily-1,{get_service_id()}")
+        filtered_trips = trip_con.get_trips(service_id=",".join(get_service_id()))
         if not len(filtered_trips):
             return 0
         id_string = ",".join([trip["trip_id"] for trip in filtered_trips])

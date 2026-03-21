@@ -94,3 +94,17 @@ CREATE TABLE
         end_lat DOUBLE PRECISION NOT NULL,
         end_lon DOUBLE PRECISION NOT NULL
     );
+
+CREATE TABLE   
+    IF NOT EXISTS calendar (
+        service_id VARCHAR(255) PRIMARY KEY,
+        monday INTEGER NOT NULL,
+        tuesday INTEGER NOT NULL,
+        wednesday INTEGER NOT NULL,
+        thursday INTEGER NOT NULL,
+        friday INTEGER NOT NULL,
+        saturday INTEGER NOT NULL,
+        sunday INTEGER NOT NULL
+    );
+
+CREATE INDEX IF NOT EXISTS idx_calendar_service_id ON calendar (service_id);
