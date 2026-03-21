@@ -101,9 +101,7 @@ class VehicleStop(BaseModel):
         )
     )
     start_time: datetime = Field(
-        validation_alias=AliasChoices(
-            AliasPath("trip_update", "trip"), "start_time"
-        )
+        validation_alias=AliasChoices(AliasPath("trip_update", "trip"), "start_time")
     )
     stop_sequence: int = Field(
         validation_alias=AliasChoices(
@@ -189,23 +187,23 @@ class VehicleStop(BaseModel):
 class VehicleLocation(BaseModel):
     id: int
     trip_id: str
-    occupancy_status: int
-    bearing: float
+    occupancy_status: int | None = None
+    bearing: float | None = None
     latitude: float
     longitude: float
-    speed: int
+    speed: int | None = None
     timestamp: int
     start_time: datetime
     route_id: str
     direction_id: int
-    schedule_relationship: int
+    schedule_relationship: int | None = None
     is_deleted: bool
-    stop_sequence: int
+    stop_sequence: int | None = None
     stop_id: str
-    stop_schedule_relationship: int
-    departure_delay: int | None
-    departure_time: int | None
-    departure_uncertainty: int | None
+    stop_schedule_relationship: int | None = None
+    departure_delay: int | None = None
+    departure_time: int | None = None
+    departure_uncertainty: int | None = None
     vehicle_id: str
     label: str
     license_plate: str | None
