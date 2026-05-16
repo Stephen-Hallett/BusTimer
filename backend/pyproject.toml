@@ -7,10 +7,12 @@ requires-python = "==3.13.*"
 dependencies = [
     "apscheduler>=3.11.2",
     "fastapi[standard]>=0.128.0",
+    "geoalchemy2>=0.20.0",
     "holidays>=0.90",
     "polars[rtcompat]>=1.37.1",
     "psycopg2-binary>=2.9.11",
     "pydantic>=2.12.5",
     "pytz>=2025.2",
     "requests>=2.32.5",
+    "sqlalchemy>=2.0.49",
 ]

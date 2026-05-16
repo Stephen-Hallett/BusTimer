@@ -4,6 +4,7 @@ import os
 import pytz
 from psycopg2.extras import RealDictCursor
 
+from ..models.models import Trip as TripModel
 from ..schemas.trips import Trip
 from ..utils.db import BaseDatabase
 from ..utils.logger import MyLogger, log
@@ -20,25 +21,9 @@ class Controller(BaseDatabase):
 
     @log
     def create_trip(self, trip: Trip) -> None:
-        with (
-            self.get_connection() as conn,
-            conn.cursor(cursor_factory=RealDictCursor) as cur,
-        ):
-            cur.execute(
-                """
-                INSERT INTO trips (trip_id, route_id, service_id, direction_id, shape_id)
-                    VALUES (%s, %s, %s, %s, %s)
-                    ON CONFLICT (trip_id) DO NOTHING
-                """,
-                (
-                    trip.trip_id,
-                    trip.route_id,
-                    trip.service_id,
-                    trip.direction_id,
-                    trip.shape_id,
-                ),
-            )
-            conn.commit()
+        with self.get_sesion() as session:
+            session.add(TripModel(**trip.model_dump()))
+            session.commit()
 
     @log
     def get_trips(
@@ -116,12 +101,9 @@ class Controller(BaseDatabase):
         Returns:
             Trip dictionary or None if not found
         """
-        with (
-            self.get_connection() as conn,
-            conn.cursor(cursor_factory=RealDictCursor) as cur,
-        ):
-            cur.execute("SELECT * FROM trips WHERE trip_id = %s", (trip_id,))
-            return cur.fetchone()
+        with self.get_session() as session:
+            trip = session.get(TripModel, trip_id)
+        return Trip.model_validate(trip)
 
     @log
     def update_trip(self, trip_id: str, trip: Trip) -> bool:
@@ -170,6 +152,8 @@ class Controller(BaseDatabase):
         Returns:
             True if trip was deleted, False if trip not found
         """
+        with self.get_session() as session:
+            session.delete()
         with (
             self.get_connection() as conn,
             conn.cursor(cursor_factory=RealDictCursor) as cur,

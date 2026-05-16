@@ -13,16 +13,22 @@ CREATE TABLE
 CREATE INDEX IF NOT EXISTS idx_calendar_service_id ON calendar (service_id);
 
 CREATE TABLE
+    IF NOT EXISTS stops (
+        stop_id VARCHAR(255) PRIMARY KEY,
+        location_type INTEGER NOT NULL,
+        stop_code VARCHAR(255) NOT NULL,
+        stop_lat DOUBLE PRECISION NOT NULL,
+        stop_lon DOUBLE PRECISION NOT NULL,
+        stop_name VARCHAR(255) NOT NULL
+    );
+
+CREATE TABLE
     IF NOT EXISTS segments (
         segment_id VARCHAR(255) PRIMARY KEY,
-        start_stop VARCHAR(255) NOT NULL,
-        end_stop VARCHAR(255) NOT NULL,
         start_stop_id VARCHAR(255) NOT NULL,
         end_stop_id VARCHAR(255) NOT NULL,
-        start_lat DOUBLE PRECISION NOT NULL,
-        start_lon DOUBLE PRECISION NOT NULL,
-        end_lat DOUBLE PRECISION NOT NULL,
-        end_lon DOUBLE PRECISION NOT NULL
+        CONSTRAINT fk_segments_start_stop FOREIGN KEY (start_stop_id) REFERENCES stops (stop_id) ON DELETE CASCADE,
+        CONSTRAINT fk_segments_end_stop FOREIGN KEY (end_stop_id) REFERENCES stops (stop_id) ON DELETE CASCADE
     );
 
 CREATE TABLE
@@ -90,8 +96,8 @@ CREATE TABLE
         trip_id VARCHAR(255) NOT NULL,
         segment_id VARCHAR(255) NOT NULL,
         PRIMARY KEY (trip_id, segment_id),
-        CONSTRAINT fk_trip_segments_trip_id FOREIGN KEY (trip_id) REFERENCES trips (trip_id),
-        CONSTRAINT fk_trip_segments_segment_id FOREIGN KEY (segment_id) REFERENCES segments (segment_id)
+        CONSTRAINT fk_trip_segments_trip_id FOREIGN KEY (trip_id) REFERENCES trips (trip_id) ON DELETE CASCADE,
+        CONSTRAINT fk_trip_segments_segment_id FOREIGN KEY (segment_id) REFERENCES segments (segment_id) ON DELETE CASCADE
     );
 
 CREATE INDEX IF NOT EXISTS idx_trip_segments_trip_id ON trip_segments (trip_id);

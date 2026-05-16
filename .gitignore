@@ -3,3 +3,4 @@ __pycache__
 .env
 
 data/gtfs
+.DS_Store

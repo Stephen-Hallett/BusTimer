@@ -1,7 +1,15 @@
 from datetime import datetime
 
 import pytz
-from pydantic import AliasChoices, AliasPath, BaseModel, Field, field_validator
+from pydantic import (
+    AliasChoices,
+    AliasPath,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from ..utils.logger import MyLogger
 
@@ -9,6 +17,8 @@ logger = MyLogger().get_logger()
 
 
 class VehicleData(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int = Field(validation_alias=AliasChoices(AliasPath("id"), "id"))
     trip_id: str = Field(
         validation_alias=AliasChoices(
@@ -76,6 +86,22 @@ class VehicleData(BaseModel):
 
 
 class VehicleStop(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _flatten_stop_time_update(cls, v: dict) -> dict:
+        if not isinstance(v, dict):
+            return v
+        trip_update = v.get("trip_update") or {}
+        if not isinstance(trip_update, dict):
+            return v
+        stu = trip_update.get("stop_time_update")
+        if isinstance(stu, list):
+            stu = stu[0] if stu else {}
+            return {**v, "trip_update": {**trip_update, "stop_time_update": stu}}
+        return v
+
     is_deleted: bool = Field(
         validation_alias=AliasChoices(AliasPath("is_deleted"), "is_deleted")
     )
@@ -141,15 +167,17 @@ class VehicleStop(BaseModel):
             "departure_uncertainty",
         ),
     )
-    vehicle_id: str = Field(
+    vehicle_id: str | None = Field(
+        default=None,
         validation_alias=AliasChoices(
             AliasPath("trip_update", "vehicle", "id"), "vehicle_id"
-        )
+        ),
     )
-    label: str = Field(
+    label: str | None = Field(
+        default=None,
         validation_alias=AliasChoices(
             AliasPath("trip_update", "vehicle", "label"), "label"
-        )
+        ),
     )
     license_plate: str | None = Field(
         default=None,
@@ -185,6 +213,8 @@ class VehicleStop(BaseModel):
 
 
 class VehicleLocation(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     trip_id: str
     occupancy_status: int | None = None

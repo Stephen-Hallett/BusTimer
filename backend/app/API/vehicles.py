@@ -81,20 +81,15 @@ class Controller(BaseDatabase):
 
     @log
     def save_vehicle_locations(self) -> int:
-        filtered_trips = trip_con.get_trips(service_id=",".join(get_service_id()))
+        service_ids = get_service_id()
+        filtered_trips = trip_con.get_trips(service_id=",".join(service_ids))
         if not len(filtered_trips):
             return 0
-        id_string = ",".join([trip["trip_id"] for trip in filtered_trips])
-
         vehicle_locations_res = requests.get(
-            f"{self.realtime_api}/vehiclelocations?tripid={id_string}",
-            headers=self.headers,
-            timeout=15,
+            f"{self.realtime_api}/vehiclelocations", headers=self.headers, timeout=15
         ).json()
         trip_updates_res = requests.get(
-            f"{self.realtime_api}/tripupdates?tripid={id_string}",
-            headers=self.headers,
-            timeout=15,
+            f"{self.realtime_api}/tripupdates", headers=self.headers, timeout=15
         ).json()
 
         self.logger.info(vehicle_locations_res)
@@ -105,16 +100,30 @@ class Controller(BaseDatabase):
             if item.get("vehicle", {}).get("trip"):
                 try:
                     vd = VehicleData.model_validate(item)
-                    vehicle_data[vd.trip_id] = vd
+                    if vd.trip_id in filtered_trips["trip_id"].to_list():
+                        vehicle_data[vd.trip_id] = vd
                 except Exception as e:
                     self.logger.warning(f"Failed to validate vehicle data: {e}")
 
         vehicle_stops: dict[str, VehicleStop] = {}
-        for item in trip_updates_res["response"]["entity"]:
-            if item.get("trip_update"):
+        for raw_item in trip_updates_res["response"]["entity"]:
+            trip_update = raw_item.get("trip_update")
+            if trip_update:
+                stu = trip_update.get("stop_time_update")
+                if isinstance(stu, list):
+                    item = {
+                        **raw_item,
+                        "trip_update": {
+                            **trip_update,
+                            "stop_time_update": stu[0] if stu else {},
+                        },
+                    }
+                else:
+                    item = raw_item
                 try:
                     vs = VehicleStop.model_validate(item)
-                    vehicle_stops[vs.trip_id] = vs
+                    if vs.trip_id in filtered_trips["trip_id"].to_list():
+                        vehicle_stops[vs.trip_id] = vs
                 except Exception as e:
                     self.logger.warning(f"Failed to validate vehicle stop: {e}")
 

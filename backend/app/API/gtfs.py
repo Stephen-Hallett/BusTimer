@@ -7,8 +7,11 @@ import zipfile
 
 import polars as pl
 import requests
-from psycopg2.extras import execute_values
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session
+from sqlalchemy.orm.decl_api import DeclarativeAttributeIntercept
 
+from ..models.models import Calendar, Segment, Stop, Trip, TripSegment
 from ..utils.db import BaseDatabase
 from ..utils.logger import MyLogger, log
 
@@ -82,7 +85,15 @@ class Controller(BaseDatabase):
         # Phase 1: lightweight scan — stop_times + stops only, no shapes
         # ------------------------------------------------------------------
         stops_minimal = pl.read_csv(
-            p / "stops.txt", columns=["stop_id", "stop_code", "stop_lat", "stop_lon"]
+            p / "stops.txt",
+            columns=[
+                "stop_id",
+                "location_type",
+                "stop_code",
+                "stop_lat",
+                "stop_lon",
+                "stop_name",
+            ],
         )
 
         # (trip_id, stop_id, stop_sequence, stop_code) for every trip
@@ -121,6 +132,10 @@ class Controller(BaseDatabase):
         stops_candidate = stops_minimal.join(
             stop_times_candidate, how="inner", on="stop_id"
         )
+
+        stops = stops_candidate.select(
+            "stop_id", "location_type", "stop_code", "stop_lat", "stop_lon", "stop_name"
+        ).unique()
 
         shapes_candidate = (
             pl.scan_csv(p / "shapes.txt")
@@ -250,14 +265,38 @@ class Controller(BaseDatabase):
             .filter(pl.col("trip_id").is_in(segments["trip_id"].unique().to_list()))
         )
 
-        return relevant_trips, segments, key_segments, calendar
+        return relevant_trips, segments, key_segments, calendar, stops
+
+    def _upsert(
+        self, session: Session, model: DeclarativeAttributeIntercept, rows: list[dict]
+    ) -> None:
+        """Insert rows, updating all non-PK columns on conflict."""
+        if not rows:
+            return
+
+        stmt = insert(model).values(rows)
+
+        # Check if there are any non primary key rows that need to be updated
+        pk_cols = {col.name for col in model.__table__.primary_key}
+        set_ = {
+            col.name: stmt.excluded[col.name]
+            for col in model.__table__.columns
+            if not col.primary_key
+        }
+
+        if set_:
+            stmt = stmt.on_conflict_do_update(index_elements=list(pk_cols), set_=set_)
+        else:
+            stmt = stmt.on_conflict_do_nothing(index_elements=list(pk_cols))
+
+        session.execute(stmt)
 
     @log
     def refresh_gtfs(self) -> dict[str, int]:
         """Download GTFS data and refresh trips, trip_segments, and segments tables."""
         with tempfile.TemporaryDirectory() as tmp:
             self._download_gtfs(tmp)
-            relevant_trips, trip_segments_df, key_segments, calendar = (
+            relevant_trips, trip_segments_df, key_segments, calendar, stops = (
                 self._build_dataframes(tmp)
             )
 
@@ -268,104 +307,31 @@ class Controller(BaseDatabase):
         )
 
         unique_segments = key_segments.select(
-            "segment_id",
-            "start_stop",
-            "end_stop",
-            "start_stop_id",
-            "end_stop_id",
-            "start_lat",
-            "start_lon",
-            "end_lat",
-            "end_lon",
+            "segment_id", "start_stop_id", "end_stop_id"
         ).unique(subset=["segment_id"])
 
-        trip_rows = [
-            (
-                row["trip_id"],
-                row["route_id"],
-                row["service_id"],
-                row["direction_id"],
-                row["shape_id"],
-            )
-            for row in relevant_trips.iter_rows(named=True)
-        ]
+        assert calendar["service_id"].n_unique() == calendar.shape[0]
+        assert stops["stop_id"].n_unique() == stops.shape[0]
+        assert relevant_trips["trip_id"].n_unique() == relevant_trips.shape[0]
+        assert unique_segments["segment_id"].n_unique() == unique_segments.shape[0]
+        assert (
+            trip_segments_df[["segment_id", "trip_id"]].n_unique()
+            == trip_segments_df.shape[0]
+        )
 
-        trip_segment_rows = [
-            (row["trip_id"], row["segment_id"])
-            for row in trip_segments_df.iter_rows(named=True)
-        ]
-
-        segment_rows = [
-            (
-                row["segment_id"],
-                row["start_stop"],
-                row["end_stop"],
-                row["start_stop_id"],
-                row["end_stop_id"],
-                row["start_lat"],
-                row["start_lon"],
-                row["end_lat"],
-                row["end_lon"],
-            )
-            for row in unique_segments.iter_rows(named=True)
-        ]
-
-        calendar_rows = list(calendar.iter_rows())
-
-        with self.get_connection() as conn, conn.cursor() as cur:
-            cur.execute("TRUNCATE trips, trip_segments, segments, calendar")
-
-            execute_values(
-                cur,
-                """
-                INSERT INTO trips (trip_id, route_id, service_id, direction_id, shape_id)
-                VALUES %s
-                """,
-                trip_rows,
-            )
-
-            execute_values(
-                cur,
-                "INSERT INTO trip_segments (trip_id, segment_id) VALUES %s",
-                trip_segment_rows,
-            )
-
-            execute_values(
-                cur,
-                """
-                INSERT INTO segments (
-                    segment_id, start_stop, end_stop,
-                    start_stop_id, end_stop_id,
-                    start_lat, start_lon, end_lat, end_lon
-                ) VALUES %s
-                """,
-                segment_rows,
-            )
-
-            execute_values(
-                cur,
-                """
-                INSERT INTO calendar (
-                    service_id,
-                    monday,
-                    tuesday,
-                    wednesday,
-                    thursday,
-                    friday,
-                    saturday,
-                    sunday
-                )
-                VALUES %s
-                """,
-                calendar_rows,
-            )
-
-            conn.commit()
+        with self.get_session() as session:
+            self._upsert(session, Calendar, calendar.to_dicts())
+            self._upsert(session, Stop, stops.unique().to_dicts())
+            self._upsert(session, Trip, relevant_trips.to_dicts())
+            self._upsert(session, Segment, unique_segments.to_dicts())
+            self._upsert(session, TripSegment, trip_segments_df.to_dicts())
+            session.commit()
 
         counts = {
-            "trips": len(trip_rows),
-            "trip_segments": len(trip_segment_rows),
-            "segments": len(segment_rows),
+            "stops": stops.shape[0],
+            "trips": relevant_trips.shape[0],
+            "trip_segments": trip_segments_df.shape[0],
+            "segments": unique_segments.shape[0],
         }
         self.logger.info(f"GTFS refresh complete: {counts}")
         return counts
