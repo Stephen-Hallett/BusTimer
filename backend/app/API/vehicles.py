@@ -3,9 +3,10 @@ import os
 
 import pytz
 import requests
-from psycopg2.extras import RealDictCursor, execute_values
+from sqlalchemy.dialects.postgresql import insert
 
 from ..API.trips import Controller as TripController
+from ..models.models import VehicleLocation as VehicleLocationModel
 from ..schemas.vehicles import VehicleData, VehicleLocation, VehicleStop
 from ..utils.db import BaseDatabase
 from ..utils.helpers import get_service_id
@@ -30,54 +31,14 @@ class Controller(BaseDatabase):
         if not vehicle_locations:
             return
 
-        with (
-            self.get_connection() as conn,
-            conn.cursor(cursor_factory=RealDictCursor) as cur,
-        ):
-            values = [
-                (
-                    vl.id,
-                    vl.trip_id,
-                    vl.occupancy_status,
-                    vl.bearing,
-                    vl.latitude,
-                    vl.longitude,
-                    vl.speed,
-                    vl.timestamp,
-                    vl.start_time,
-                    vl.route_id,
-                    vl.direction_id,
-                    vl.schedule_relationship,
-                    vl.is_deleted,
-                    vl.stop_sequence,
-                    vl.stop_id,
-                    vl.stop_schedule_relationship,
-                    vl.departure_delay,
-                    vl.departure_time,
-                    vl.departure_uncertainty,
-                    vl.vehicle_id,
-                    vl.label,
-                    vl.license_plate,
-                    vl.delay,
-                )
-                for vl in vehicle_locations
-            ]
-
-            execute_values(
-                cur,
-                """
-                INSERT INTO vehicle_locations (
-                    id, trip_id, occupancy_status, bearing, latitude,
-                    longitude, speed, timestamp, start_time, route_id,
-                    direction_id, schedule_relationship, is_deleted,
-                    stop_sequence, stop_id, stop_schedule_relationship,
-                    departure_delay, departure_time, departure_uncertainty,
-                    vehicle_id, label, license_plate, delay
-                ) VALUES %s
-                """,
-                values,
+        with self.get_session() as session:
+            session.execute(
+                insert(VehicleLocationModel).on_conflict_do_nothing(
+                    index_elements=["id", "timestamp"]
+                ),
+                [location.model_dump() for location in vehicle_locations],
             )
-            conn.commit()
+            session.commit()
 
     @log
     def save_vehicle_locations(self) -> int:
@@ -85,6 +46,7 @@ class Controller(BaseDatabase):
         filtered_trips = trip_con.get_trips(service_id=",".join(service_ids))
         if not len(filtered_trips):
             return 0
+        trip_ids = {t.trip_id for t in filtered_trips}
         vehicle_locations_res = requests.get(
             f"{self.realtime_api}/vehiclelocations", headers=self.headers, timeout=15
         ).json()
@@ -100,7 +62,7 @@ class Controller(BaseDatabase):
             if item.get("vehicle", {}).get("trip"):
                 try:
                     vd = VehicleData.model_validate(item)
-                    if vd.trip_id in filtered_trips["trip_id"].to_list():
+                    if vd.trip_id in trip_ids:
                         vehicle_data[vd.trip_id] = vd
                 except Exception as e:
                     self.logger.warning(f"Failed to validate vehicle data: {e}")
@@ -122,7 +84,7 @@ class Controller(BaseDatabase):
                     item = raw_item
                 try:
                     vs = VehicleStop.model_validate(item)
-                    if vs.trip_id in filtered_trips["trip_id"].to_list():
+                    if vs.trip_id in trip_ids:
                         vehicle_stops[vs.trip_id] = vs
                 except Exception as e:
                     self.logger.warning(f"Failed to validate vehicle stop: {e}")

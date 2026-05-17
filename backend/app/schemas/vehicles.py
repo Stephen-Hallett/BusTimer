@@ -25,15 +25,17 @@ class VehicleData(BaseModel):
             AliasPath("vehicle", "trip", "trip_id"), "trip_id"
         )
     )
-    occupancy_status: int = Field(
+    occupancy_status: int | None = Field(
         validation_alias=AliasChoices(
             AliasPath("vehicle", "occupancy_status"), "occupancy_status"
-        )
+        ),
+        default=None,
     )
-    bearing: float = Field(
+    bearing: float | None = Field(
         validation_alias=AliasChoices(
             AliasPath("vehicle", "position", "bearing"), "bearing"
-        )
+        ),
+        default=None,
     )
     latitude: float = Field(
         validation_alias=AliasChoices(
@@ -45,7 +47,7 @@ class VehicleData(BaseModel):
             AliasPath("vehicle", "position", "longitude"), "longitude"
         )
     )
-    speed: int = Field(
+    speed: float = Field(
         validation_alias=AliasChoices(
             AliasPath("vehicle", "position", "speed"), "speed"
         )
@@ -61,10 +63,11 @@ class VehicleData(BaseModel):
             AliasPath("vehicle", "trip", "route_id"), "route_id"
         )
     )
-    direction_id: int = Field(
+    direction_id: int | None = Field(
         validation_alias=AliasChoices(
             AliasPath("vehicle", "trip", "direction_id"), "direction_id"
-        )
+        ),
+        default=None,
     )
 
     @field_validator("start_time", mode="before")
@@ -103,7 +106,8 @@ class VehicleStop(BaseModel):
         return v
 
     is_deleted: bool = Field(
-        validation_alias=AliasChoices(AliasPath("is_deleted"), "is_deleted")
+        default=False,
+        validation_alias=AliasChoices(AliasPath("is_deleted"), "is_deleted"),
     )
     trip_id: str = Field(
         validation_alias=AliasChoices(
@@ -115,16 +119,18 @@ class VehicleStop(BaseModel):
             AliasPath("trip_update", "trip", "route_id"), "route_id"
         )
     )
-    direction_id: int = Field(
+    direction_id: int | None = Field(
+        default=None,
         validation_alias=AliasChoices(
             AliasPath("trip_update", "trip", "direction_id"), "direction_id"
-        )
+        ),
     )
-    schedule_relationship: int = Field(
+    schedule_relationship: int | None = Field(
+        default=None,
         validation_alias=AliasChoices(
             AliasPath("trip_update", "trip", "schedule_relationship"),
             "schedule_relationship",
-        )
+        ),
     )
     start_time: datetime = Field(
         validation_alias=AliasChoices(AliasPath("trip_update", "trip"), "start_time")
@@ -140,11 +146,12 @@ class VehicleStop(BaseModel):
             AliasPath("trip_update", "stop_time_update", "stop_id"), "stop_id"
         )
     )
-    stop_schedule_relationship: int = Field(
+    stop_schedule_relationship: int | None = Field(
+        default=None,
         validation_alias=AliasChoices(
             AliasPath("trip_update", "stop_time_update", "schedule_relationship"),
             "stop_schedule_relationship",
-        )
+        ),
     )
     departure_delay: int | None = Field(
         default=None,
@@ -221,14 +228,14 @@ class VehicleLocation(BaseModel):
     bearing: float | None = None
     latitude: float
     longitude: float
-    speed: int | None = None
+    speed: float
     timestamp: int
     start_time: datetime
     route_id: str
-    direction_id: int
+    direction_id: int | None = None
     schedule_relationship: int | None = None
     is_deleted: bool
-    stop_sequence: int | None = None
+    stop_sequence: int
     stop_id: str
     stop_schedule_relationship: int | None = None
     departure_delay: int | None = None
