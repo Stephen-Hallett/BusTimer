@@ -24,9 +24,9 @@ jobs:
         run: |
           ssh -o "StrictHostKeyChecking no" ${{ secrets.VPS_USER }}@dietpi "
             if [ ! -d /home/stephen/BusTimer/.git ]; then
-                git clone https://github.com/Stephen-Hallett/BusTimer.git /home/stephen/BusTimer;
+                git clone https://github.com/Stephen-Hallett/BusTimer.git /root/BusTimer;
             fi \
-            && cd /home/stephen/BusTimer \
+            && cd /root/BusTimer \
             && git pull \
             && printf \"%s\" \"${{ secrets.ENV }}\" > .env \
             && docker compose up -d --build
