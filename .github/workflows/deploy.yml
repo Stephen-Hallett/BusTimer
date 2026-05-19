@@ -22,7 +22,7 @@ jobs:
 
       - name: Redeploy App
         run: |
-          ssh -o "StrictHostKeyChecking no" ${{ secrets.VPS_USER }}@apps "
+          ssh -o "StrictHostKeyChecking no" ${{ secrets.VPS_USER }}@dietpi "
             if [ ! -d /home/stephen/BusTimer/.git ]; then
                 git clone https://github.com/Stephen-Hallett/BusTimer.git /home/stephen/BusTimer;
             fi \
