@@ -1,7 +1,6 @@
 services:
   db:
-    image: postgis/postgis:16-3.4
-    platform: linux/arm64/v8
+    image: postgis/postgis:16-3.5
     container_name: ${POSTGRES_DB}
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -23,7 +22,6 @@ services:
 
   pgadmin:
     image: dpage/pgadmin4:latest
-    platform: linux/arm64/v8
     environment:
       PGADMIN_DEFAULT_EMAIL: pgadmin@stephenhallett.nz
       PGADMIN_DEFAULT_PASSWORD: pgadmin
