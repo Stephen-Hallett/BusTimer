@@ -1,6 +1,7 @@
 services:
   db:
     image: postgis/postgis:16-3.4
+    platform: linux/arm64/v8
     container_name: ${POSTGRES_DB}
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -10,7 +11,7 @@ services:
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
-      - ${DB_DATA_PATH:-./db_data}:/var/lib/postgresql/data:/var/lib/postgresql/data
+      - ${DB_DATA_PATH:-./db_data}:/var/lib/postgresql/data
       - ./data/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - ./data/trips.csv:/docker-entrypoint-initdb.d/trips.csv:ro
     restart: unless-stopped
@@ -22,6 +23,7 @@ services:
 
   pgadmin:
     image: dpage/pgadmin4:latest
+    platform: linux/arm64/v8
     environment:
       PGADMIN_DEFAULT_EMAIL: pgadmin@stephenhallett.nz
       PGADMIN_DEFAULT_PASSWORD: pgadmin
