@@ -247,7 +247,7 @@ def ensure_analytics_table(df: pl.DataFrame, table: str = "analytics_data") -> N
             cur.execute(f"""
                 CREATE TABLE IF NOT EXISTS {table} (
                     {col_defs},
-                    PRIMARY KEY (id, obs_year)
+                    PRIMARY KEY (id, timestamp, obs_year)
                 ) PARTITION BY RANGE (obs_year)
             """)
             # Partitions — create for any year in the data; IF NOT EXISTS is safe to re-run
@@ -280,7 +280,8 @@ def ensure_analytics_table(df: pl.DataFrame, table: str = "analytics_data") -> N
 def write_analytics_data(df: pl.DataFrame, table: str = "analytics_data") -> None:
     columns = ", ".join(f'"{c}"' for c in df.columns)
     # All non-PK columns get updated on conflict
-    update_cols = [c for c in df.columns if c != "id"]
+    pk_cols = {"id", "timestamp", "obs_year"}
+    update_cols = [c for c in df.columns if c not in pk_cols]
     update_clause = ", ".join(f'"{c}" = EXCLUDED."{c}"' for c in update_cols)
 
     log.info("Upserting %d rows into '%s'", len(df), table)
@@ -290,7 +291,7 @@ def write_analytics_data(df: pl.DataFrame, table: str = "analytics_data") -> Non
                 cur,
                 f"""
                 INSERT INTO {table} ({columns}) VALUES %s
-                ON CONFLICT (id, obs_year)
+                ON CONFLICT (id, timestamp, obs_year)
                 DO UPDATE SET {update_clause}
                 """,
                 df.rows(),
@@ -304,7 +305,6 @@ if __name__ == "__main__":
     args = parse_args()
 
     matched_locations = get_locations_data(args.week_start)
-    matched_locations = get_locations_data(datetime.date.fromisoformat("2026-05-20"))
     generic_features = get_generic_features(matched_locations)
     global_segment_features, daily_segment_features, monthly_segment_features, hourly_segment_features = get_average_features(matched_locations)
     lagged_features = get_lagged_features(matched_locations)
